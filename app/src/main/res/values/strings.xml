@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">a4miniprint</string>
+    <string name="app_version">版本：v%1$s</string>
+    <string name="select_photos">选择照片</string>
+    <string name="selected_count">已选择：%1$d 张</string>
+    <string name="preset_label">4×6 近似（A4 排版）</string>
+    <string name="layout_mode">排版模式</string>
+    <string name="mode_grid">A4 四宫格</string>
+    <string name="mode_single">每页一张</string>
+    <string name="fit_mode">图片填充方式</string>
+    <string name="fit_contain">完整显示（不裁切）</string>
+    <string name="fit_cover">填满 4×6（裁切边缘）</string>
+    <string name="resolution_mode">输出精度</string>
+    <string name="resolution_print">300DPI 打印优化（推荐）</string>
+    <string name="resolution_original">原始分辨率（体积更大）</string>
+    <string name="start_print">开始打印</string>
+    <string name="share_title">a4miniprint</string>
+    <string name="share_confirm">确认打印</string>
+    <string name="cancel">取消</string>
+    <string name="loading_photos">正在读取照片…</string>
+    <string name="read_photo_failed">读取照片失败：%1$s</string>
+    <string name="select_photos_first">请先选择照片</string>
+</resources>

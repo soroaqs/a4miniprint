@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+
+# Local environment
+local.properties
+
+# Release signing
+*.keystore
+*.jks
+release-signing.properties
