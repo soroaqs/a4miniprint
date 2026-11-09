@@ -1,6 +1,7 @@
 package io.github.soroaqs.a4miniprint.config
 
 import io.github.soroaqs.a4miniprint.data.PrintLayoutMode
+import io.github.soroaqs.a4miniprint.data.PrintTaskMode
 import io.github.soroaqs.a4miniprint.data.PhotoFitMode
 import io.github.soroaqs.a4miniprint.data.PhotoResolutionMode
 import io.github.soroaqs.a4miniprint.data.SizeMm
@@ -19,8 +20,15 @@ data class PrintConfig(
     val gridColumns: Int = 2,
     val gridRows: Int = 2,
     val defaultLayoutMode: PrintLayoutMode = PrintLayoutMode.A4_GRID,
+    val defaultTaskMode: PrintTaskMode = PrintTaskMode.PHOTO_4X6,
+    val defaultColumnCount: Int = 3,
     val defaultFitMode: PhotoFitMode = PhotoFitMode.CONTAIN,
     val defaultResolutionMode: PhotoResolutionMode = PhotoResolutionMode.PRINT_300_DPI,
+    /**
+     * 分栏预览只用于观察切分线，使用远小于打印输出的小图，
+     * 限制最长边可避免大图在 UI 预览阶段占用过多内存。
+     */
+    val previewMaxEdgePx: Int = 1024,
     /**
      * 实测 HP 打印机输出整体略偏右约 1mm；左移 0.5mm 可让左右留白恢复对称。
      */

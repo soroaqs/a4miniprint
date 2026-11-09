@@ -10,6 +10,14 @@ import androidx.core.content.IntentCompat
 class ShareIntentParser {
 
     fun parse(intent: Intent): List<Uri> {
+        // 只把系统分享动作当作图片入口；普通启动、深链或异常 Intent
+        // 即使携带 URI，也不应误触发分享确认弹窗。
+        if (intent.action != Intent.ACTION_SEND &&
+            intent.action != Intent.ACTION_SEND_MULTIPLE
+        ) {
+            return emptyList()
+        }
+
         val uris = LinkedHashSet<Uri>()
 
         intent.data?.let { uri ->

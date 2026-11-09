@@ -43,14 +43,41 @@
             android:text="@string/selected_count" />
 
         <TextView
-            android:id="@+id/preset_label_text"
+            android:id="@+id/task_mode_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:textColor="#111827"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:text="@string/preset_label" />
+            android:text="@string/task_mode" />
+
+        <RadioGroup
+            android:id="@+id/task_mode_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/task_photo_radio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="@string/task_photo" />
+
+            <RadioButton
+                android:id="@+id/task_split_radio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/task_split" />
+        </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/photo_options_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
         <TextView
             android:layout_width="wrap_content"
@@ -82,6 +109,15 @@
         </RadioGroup>
 
         <TextView
+            android:id="@+id/preset_label_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="#6B7280"
+            android:textSize="13sp"
+            android:text="@string/preset_label" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -109,6 +145,142 @@
                 android:layout_height="wrap_content"
                 android:text="@string/fit_cover" />
         </RadioGroup>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/split_options_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/column_count"
+                android:textColor="#374151"
+                android:textSize="14sp" />
+
+            <RadioGroup
+                android:id="@+id/column_count_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/column_count_2_radio"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/columns_2" />
+
+                <RadioButton
+                    android:id="@+id/column_count_3_radio"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checked="true"
+                    android:text="@string/columns_3" />
+
+                <RadioButton
+                    android:id="@+id/column_count_4_radio"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/columns_4" />
+            </RadioGroup>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/split_preview"
+                android:textColor="#374151"
+                android:textSize="14sp" />
+
+            <io.github.soroaqs.a4miniprint.ui.ColumnSplitPreviewView
+                android:id="@+id/split_preview"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="4dp"
+                android:background="#F3F4F6" />
+
+            <TextView
+                android:id="@+id/split_line_1_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textColor="#374151"
+                android:textSize="14sp"
+                android:text="@string/split_line_1" />
+
+            <SeekBar
+                android:id="@+id/split_line_1_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="1000" />
+
+            <TextView
+                android:id="@+id/split_line_2_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textColor="#374151"
+                android:textSize="14sp"
+                android:text="@string/split_line_2" />
+
+            <SeekBar
+                android:id="@+id/split_line_2_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="1000" />
+
+            <TextView
+                android:id="@+id/split_line_3_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textColor="#374151"
+                android:textSize="14sp"
+                android:text="@string/split_line_3" />
+
+            <SeekBar
+                android:id="@+id/split_line_3_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="1000" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/split_fit_mode"
+                android:textColor="#374151"
+                android:textSize="14sp" />
+
+            <RadioGroup
+                android:id="@+id/split_fit_mode_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/split_fit_contain_radio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="@string/split_fit_contain" />
+
+                <RadioButton
+                    android:id="@+id/split_fit_fill_radio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/split_fit_fill" />
+            </RadioGroup>
+        </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"

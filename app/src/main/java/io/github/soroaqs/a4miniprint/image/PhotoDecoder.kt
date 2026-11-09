@@ -4,7 +4,9 @@ import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.graphics.RectF
 import io.github.soroaqs.a4miniprint.config.PrintConfig
+import io.github.soroaqs.a4miniprint.data.PhotoFitMode
 import io.github.soroaqs.a4miniprint.data.PhotoResolutionMode
 import io.github.soroaqs.a4miniprint.data.PhotoSlot
 import androidx.exifinterface.media.ExifInterface
@@ -23,13 +25,39 @@ class PhotoDecoder(
     fun decode(slot: PhotoSlot): Bitmap {
         val targetWidthMm = slot.rectMm.width()
         val targetHeightMm = slot.rectMm.height()
-        val targetWidthPx = mmToPx(targetWidthMm, config.targetDpi)
-        val targetHeightPx = mmToPx(targetHeightMm, config.targetDpi)
+        val cropRect = slot.sourceCropRect
+        val sourceWidth = cropRect?.let { rect ->
+            (slot.photo.orientedWidth * rect.width()).roundToInt()
+        } ?: slot.photo.orientedWidth
+        val sourceHeight = cropRect?.let { rect ->
+            (slot.photo.orientedHeight * rect.height()).roundToInt()
+        } ?: slot.photo.orientedHeight
+
+        val targetWidthPx: Int
+        val targetHeightPx: Int
+        when (slot.fitMode) {
+            PhotoFitMode.CONTAIN -> {
+                val sourceAspect = sourceWidth.toFloat() / sourceHeight.toFloat()
+                val slotAspect = targetWidthMm / targetHeightMm
+                if (sourceAspect > slotAspect) {
+                    targetWidthPx = mmToPx(targetWidthMm, config.targetDpi)
+                    targetHeightPx = (targetWidthPx / sourceAspect).roundToInt()
+                } else {
+                    targetHeightPx = mmToPx(targetHeightMm, config.targetDpi)
+                    targetWidthPx = (targetHeightPx * sourceAspect).roundToInt()
+                }
+            }
+            PhotoFitMode.COVER,
+            PhotoFitMode.FILL -> {
+                targetWidthPx = mmToPx(targetWidthMm, config.targetDpi)
+                targetHeightPx = mmToPx(targetHeightMm, config.targetDpi)
+            }
+        }
 
         val sampleSize = when (slot.resolutionMode) {
             PhotoResolutionMode.PRINT_300_DPI -> calculateSampleSize(
-                sourceWidth = slot.photo.orientedWidth,
-                sourceHeight = slot.photo.orientedHeight,
+                sourceWidth = sourceWidth,
+                sourceHeight = sourceHeight,
                 targetWidth = targetWidthPx,
                 targetHeight = targetHeightPx
             )
@@ -50,9 +78,16 @@ class PhotoDecoder(
             decoded.recycle()
         }
 
-        val oriented = rotateToSlotOrientation(exifOriented, slot.isPortrait)
-        if (oriented !== exifOriented) {
+        val cropped = cropToSourceRect(exifOriented, cropRect)
+        if (cropped !== exifOriented) {
             exifOriented.recycle()
+        }
+
+        val oriented = rotateToSlotOrientation(cropped, slot.isPortrait)
+        // rotated 只能回收 cropped；不能与 exifOriented 比较，
+        // 否则 cropped 未发生旋转但已经是裁剪结果时，会把返回对象错误回收。
+        if (oriented !== cropped) {
+            cropped.recycle()
         }
 
         return oriented
@@ -125,6 +160,28 @@ class PhotoDecoder(
             matrix,
             true
         )
+    }
+
+    /**
+     * 按归一化区域裁剪源图。
+     *
+     * 分栏拆印先在已修正 EXIF 方向的图上裁出左右栏，再进入统一的 A4 渲染流程。
+     */
+    private fun cropToSourceRect(bitmap: Bitmap, cropRect: RectF?): Bitmap {
+        if (cropRect == null) {
+            return bitmap
+        }
+
+        val left = (bitmap.width * cropRect.left).roundToInt().coerceIn(0, bitmap.width)
+        val top = (bitmap.height * cropRect.top).roundToInt().coerceIn(0, bitmap.height)
+        val right = (bitmap.width * cropRect.right).roundToInt().coerceIn(left, bitmap.width)
+        val bottom = (bitmap.height * cropRect.bottom).roundToInt().coerceIn(top, bitmap.height)
+
+        if (left == 0 && top == 0 && right == bitmap.width && bottom == bitmap.height) {
+            return bitmap
+        }
+
+        return Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
     }
 
     private fun mmToPx(valueMm: Float, dpi: Int): Int {

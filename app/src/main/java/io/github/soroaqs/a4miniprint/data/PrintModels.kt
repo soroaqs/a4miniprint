@@ -13,9 +13,21 @@ enum class PrintLayoutMode {
     SINGLE_PER_PAGE
 }
 
+/**
+ * 顶层任务模式。
+ *
+ * [PHOTO_4X6] 保留现有的 4×6 照片排版；
+ * [COLUMN_SPLIT] 用于把一张横向多栏图拆成多张 A4 竖版页面。
+ */
+enum class PrintTaskMode {
+    PHOTO_4X6,
+    COLUMN_SPLIT
+}
+
 enum class PhotoFitMode {
     CONTAIN,
-    COVER
+    COVER,
+    FILL
 }
 
 enum class PhotoResolutionMode {
@@ -49,7 +61,13 @@ data class PhotoSlot(
     val rectMm: RectF,
     val isPortrait: Boolean,
     val fitMode: PhotoFitMode,
-    val resolutionMode: PhotoResolutionMode
+    val resolutionMode: PhotoResolutionMode,
+    /**
+     * 可选的源图裁剪区域，坐标使用 0f..1f 的归一化比例。
+     *
+     * 分栏拆印会把一张原图切成多栏，每栏生成一张 A4 页面。
+     */
+    val sourceCropRect: RectF? = null
 )
 
 data class PrintPage(

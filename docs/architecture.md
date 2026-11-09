@@ -4,7 +4,12 @@
 
 ## 1. 项目定位
 
-a4miniprint 是一个单 Activity Android 应用，用于把图片排版到 A4 纸并调用系统打印服务。应用不直接连接打印机，不实现自定义打印服务，也不生成应用自有的图片或 PDF 文件。
+a4miniprint 是一个单 Activity Android 应用，用于把图片排版到 A4 纸并调用系统打印服务。应用包含两个顶层模式：
+
+- `PHOTO_4X6`：把照片按近似 4×6 尺寸排版到 A4。
+- `COLUMN_SPLIT`：把一张横向多栏图片拆成多张 A4 竖版页面。
+
+应用不直接连接打印机，不实现自定义打印服务，也不生成应用自有的图片或 PDF 文件。
 
 核心流程：
 
@@ -13,6 +18,8 @@ a4miniprint 是一个单 Activity Android 应用，用于把图片排版到 A4 �
 3. 计算页面、格子、填充方式和分辨率。
 4. 在后台线程解码图片并写入 Android 打印框架提供的输出描述符。
 5. 系统打印服务负责预览、页范围、份数、色彩和实际设备输出。
+
+分栏拆印模式在进入系统打印预览前，还会使用应用内切分线预览辅助用户定位竖向切分线；该预览只加载降采样小图，不参与最终打印输出。
 
 ## 2. 技术栈
 
@@ -45,8 +52,10 @@ app/src/main/
 │   │   └── PrintModels.kt
 │   ├── image/
 │   │   ├── ImageMetadataLoader.kt
-│   │   └── PhotoDecoder.kt
+│   │   ├── PhotoDecoder.kt
+│   │   └── PreviewBitmapLoader.kt
 │   ├── layout/
+│   │   ├── ColumnSplitLayoutPlanner.kt
 │   │   └── PrintLayoutPlanner.kt
 │   ├── print/
 │   │   ├── PhotoPrintDocumentAdapter.kt
@@ -54,6 +63,7 @@ app/src/main/
 │   ├── share/
 │   │   └── ShareIntentParser.kt
 │   └── ui/
+│       ├── ColumnSplitPreviewView.kt
 │       └── MainActivity.kt
 └── res/
     ├── layout/
@@ -70,8 +80,11 @@ app/src/main/
 - 目标 DPI。
 - 网格行列数。
 - 默认布局模式。
+- 默认顶层任务模式。
+- 默认分栏拆印栏数。
 - 默认填充模式。
 - 默认分辨率模式。
+- 分栏预览最长边像素限制。
 - 打印任务名。
 
 新增 A6、5×7 等尺寸时，应先扩展 `PrintPreset` 和排版计算，再增加 UI 选项。
@@ -81,9 +94,9 @@ app/src/main/
 `PrintModels.kt` 定义轻量数据模型：
 
 - `PhotoMetadata`：URI、原始尺寸和 EXIF orientation。
-- `PhotoSlot`：照片、页面矩形、填充方式和分辨率模式。
+- `PhotoSlot`：照片、页面矩形、填充方式、分辨率模式和可选源图裁剪区域。
 - `PrintPage`：页面方向和一组照片槽位。
-- 枚举：布局模式、填充模式、分辨率模式。
+- 枚举：顶层任务模式、布局模式、填充模式、分辨率模式。
 
 数据模型不持有 Bitmap，避免长时间保存大图内存。
 
@@ -98,10 +111,19 @@ app/src/main/
 `PhotoDecoder`：
 
 - 根据输出模式计算采样率。
+- 支持分栏拆印传入的归一化裁剪区域。
 - 解码为 `ARGB_8888`。
 - 修正 EXIF 方向。
+- 分栏拆印先在修正 EXIF 后的图上裁出左右栏，再进入统一渲染流程。
 - 将横版图片旋转为竖版。
 - 由打印适配器在每张图绘制后立即回收。
+
+`PreviewBitmapLoader`：
+
+- 仅为分栏切分线预览加载一张小图。
+- 按 `previewMaxEdgePx` 降采样，默认最长边为 1024px。
+- 修正 EXIF 方向，并在生成新 Bitmap 时回收中间对象。
+- 不参与最终打印输出，不生成文件。
 
 ### layout
 
@@ -112,6 +134,20 @@ app/src/main/
 - 单页模式每页一张。
 - 当前格子为 `99mm × 148.5mm`。
 - 左、中、右水平空隙均匀分配，各为 `4mm`。
+
+`ColumnSplitLayoutPlanner` 负责分栏拆印：
+
+- 支持 2、3、4 栏。
+- 每条切分线使用独立滑杆微调，内部按 0.1% 步进计算。
+- 默认等分，用户可调整切分线位置。
+- 按左到右顺序生成多张 A4 竖版页面。
+- 第一版不自动识别栏边界，只做几何切分。
+
+分栏预览由 `ColumnSplitPreviewView` 绘制，当前切分线来自同一份滑杆状态：
+
+- 预览 Bitmap 由 `MainActivity` 统一持有，主界面和分享弹窗共享同一份内存。
+- 仅分栏拆印模式加载预览；切回 4×6 模式、重新选择多图或 Activity 销毁时立即回收。
+- 加载结果带代际校验，旧的加载任务完成后不会覆盖新的选择。
 
 ### print
 
@@ -144,9 +180,11 @@ app/src/main/
 `MainActivity`：
 
 - 使用系统 Photo Picker。
-- 支持分享确认窗口。
+- 分享入口载入图片后直接进入主界面，不显示参数确认弹窗。
 - 维护布局、填充和分辨率选项。
+- 每次载入新图片时重置为默认 `PHOTO_4X6` 模式。
 - 动态显示应用版本号。
+- 分栏拆印模式下显示切分线预览，并共享同一份降采样 Bitmap。
 - 使用单线程 executor 加载元数据。
 - Activity 销毁时关闭 executor 并清理主线程回调。
 
@@ -187,6 +225,7 @@ A4 四宫格水平落位：
 
 - `CONTAIN`：完整显示照片，不裁切，不变形；比例不匹配时留白。
 - `COVER`：居中裁切并填满 2:3 格子；会丢失部分边缘。
+- `FILL`：拉伸填满目标区域；仅用于分栏拆印，可能造成文字变形。
 
 ### 分辨率模式
 
@@ -346,6 +385,9 @@ keytool -genkeypair -v \
 - Manifest 不出现网络、存储、定位等非必要权限。
 - Save as PDF 页面为 A4，四宫格坐标居中。
 - 四宫格、每页一张、contain、cover、300DPI 和原始分辨率可用。
+- 分栏拆印 2、3、4 栏可用，切分线可独立微调。
+- 分栏预览红线随滑杆实时移动，切回 4×6 模式后释放预览内存。
+- 分栏拆印的等比适配、拉伸填满和从左到右页面顺序可用。
 - 真实打印机输出和切割位置符合预期。
 
 ## 13. 参考文档

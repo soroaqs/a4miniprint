@@ -197,7 +197,8 @@ class PhotoPrintDocumentAdapter(
                         bitmapHeight = bitmap.height,
                         slotRect = slot.rectMm
                     )
-                    PhotoFitMode.COVER -> RectF(
+                    PhotoFitMode.COVER,
+                    PhotoFitMode.FILL -> RectF(
                         mmToPointF(slot.rectMm.left),
                         mmToPointF(slot.rectMm.top),
                         mmToPointF(slot.rectMm.right),
