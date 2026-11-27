@@ -3,10 +3,13 @@ package io.github.soroaqs.a4miniprint.image
 import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.Matrix
+import android.graphics.pdf.PdfRenderer
 import androidx.exifinterface.media.ExifInterface
 import io.github.soroaqs.a4miniprint.config.PrintConfig
 import io.github.soroaqs.a4miniprint.data.PhotoMetadata
+import io.github.soroaqs.a4miniprint.data.PhotoSourceType
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -22,6 +25,10 @@ class PreviewBitmapLoader(
 ) {
 
     fun load(photo: PhotoMetadata): Bitmap {
+        if (photo.sourceType == PhotoSourceType.PDF_PAGE) {
+            return loadPdfPreview(photo)
+        }
+
         val maxEdge = config.previewMaxEdgePx
         val sampleSize = calculateSampleSize(
             sourceWidth = photo.orientedWidth,
@@ -59,6 +66,56 @@ class PreviewBitmapLoader(
             oriented.recycle()
         }
         return preview
+    }
+
+    /**
+     * 渲染 PDF 第 1 页作为切分线预览。
+     *
+     * 预览只用于观察切分线，按最长边降采样，不参与最终打印。
+     */
+    private fun loadPdfPreview(photo: PhotoMetadata): Bitmap {
+        PdfDocumentHandle.open(contentResolver, photo.uri).use { handle ->
+            val pageIndex = photo.pdfPageIndex.coerceIn(
+                0,
+                handle.renderer.pageCount - 1
+            )
+            val page = handle.renderer.openPage(pageIndex)
+            try {
+                val maxEdge = config.previewMaxEdgePx
+                val aspect = page.width.toFloat() / page.height.toFloat()
+                val width: Int
+                val height: Int
+                if (aspect >= 1f) {
+                    width = maxEdge
+                    height = (maxEdge / aspect).roundToInt().coerceAtLeast(1)
+                } else {
+                    height = maxEdge
+                    width = (maxEdge * aspect).roundToInt().coerceAtLeast(1)
+                }
+
+                val preview = Bitmap.createBitmap(
+                    width,
+                    height,
+                    Bitmap.Config.ARGB_8888
+                )
+                preview.eraseColor(Color.WHITE)
+                val matrix = Matrix().apply {
+                    setScale(
+                        width / page.width.toFloat(),
+                        height / page.height.toFloat()
+                    )
+                }
+                page.render(
+                    preview,
+                    null,
+                    matrix,
+                    PdfRenderer.Page.RENDER_MODE_FOR_PRINT
+                )
+                return preview
+            } finally {
+                page.close()
+            }
+        }
     }
 
     private fun calculateSampleSize(

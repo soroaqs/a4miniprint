@@ -36,13 +36,28 @@ enum class PhotoResolutionMode {
 }
 
 /**
+ * 输入来源类型。
+ *
+ * [IMAGE] 走 BitmapFactory 解码；[PDF_PAGE] 走 PdfRenderer 栅格化。
+ */
+enum class PhotoSourceType {
+    IMAGE,
+    PDF_PAGE
+}
+
+/**
  * 照片元数据只保留排版和裁切需要的信息，避免保存完整 Bitmap。
+ *
+ * PDF 页的 [rawWidth]、[rawHeight] 是 point（1/72 英寸），
+ * 与图片的像素尺寸一样只用于计算宽高比和目标尺寸。
  */
 data class PhotoMetadata(
     val uri: Uri,
     val rawWidth: Int,
     val rawHeight: Int,
-    val exifOrientation: Int
+    val exifOrientation: Int,
+    val sourceType: PhotoSourceType = PhotoSourceType.IMAGE,
+    val pdfPageIndex: Int = 0
 ) {
     val orientedWidth: Int
         get() = if (exifOrientation in 5..8) rawHeight else rawWidth

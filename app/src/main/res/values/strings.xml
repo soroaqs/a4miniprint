@@ -2,14 +2,20 @@
     <string name="app_name">a4miniprint</string>
     <string name="app_version">版本：v%1$s</string>
     <string name="select_photos">选择照片</string>
+    <string name="select_pdf">选择 PDF</string>
     <string name="selected_count">已选择：%1$d 张</string>
+    <string name="selected_pdf_pages">已选择 PDF：%1$d 页</string>
     <string name="preset_label">4×6 近似（A4 排版）</string>
     <string name="task_mode">功能模式</string>
     <string name="task_photo">4×6 照片</string>
     <string name="task_split">分栏拆印</string>
     <string name="column_count">栏数</string>
     <string name="split_preview">分栏预览</string>
-    <string name="split_preview_placeholder">选择一张图片后显示预览</string>
+    <string name="split_preview_placeholder">选择一张图片或一个 PDF 后显示预览</string>
+    <string name="split_preview_pdf_note">PDF 每页独立保存切分线，可翻页分别调整</string>
+    <string name="pdf_page_previous">上一页</string>
+    <string name="pdf_page_next">下一页</string>
+    <string name="pdf_page_indicator">第 %1$d / %2$d 页</string>
     <string name="columns_2">2 栏</string>
     <string name="columns_3">3 栏</string>
     <string name="columns_4">4 栏</string>
@@ -31,7 +37,12 @@
     <string name="start_print">开始打印</string>
     <string name="share_title">a4miniprint</string>
     <string name="loading_photos">正在读取照片…</string>
+    <string name="loading_pdf">正在读取 PDF…</string>
     <string name="read_photo_failed">读取照片失败：%1$s</string>
-    <string name="select_photos_first">请先选择照片</string>
+    <string name="read_pdf_failed">读取 PDF 失败：%1$s</string>
+    <string name="pdf_single_file_only">PDF 一次只能选择一个文件，且不能与图片混合</string>
+    <string name="pdf_mixed_sources">不能同时选择图片和 PDF</string>
+    <string name="pdf_requires_split_mode">PDF 仅支持分栏拆印</string>
+    <string name="select_photos_first">请先选择照片或 PDF</string>
     <string name="split_requires_single_photo">分栏拆印目前仅支持一张图片</string>
 </resources>

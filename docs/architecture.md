@@ -4,19 +4,20 @@
 
 ## 1. 项目定位
 
-a4miniprint 是一个单 Activity Android 应用，用于把图片排版到 A4 纸并调用系统打印服务。应用包含两个顶层模式：
+a4miniprint 是一个单 Activity Android 应用，用于把图片或 PDF 排版到 A4 纸并调用系统打印服务。应用包含两个顶层模式：
 
 - `PHOTO_4X6`：把照片按近似 4×6 尺寸排版到 A4。
-- `COLUMN_SPLIT`：把一张横向多栏图片拆成多张 A4 竖版页面。
+- `COLUMN_SPLIT`：把一张横向多栏图片拆成多张 A4 竖版页面。也接受 PDF，按页展开后逐页拆栏。
 
 应用不直接连接打印机，不实现自定义打印服务，也不生成应用自有的图片或 PDF 文件。
+唯一例外是 PDF 来源不可 seek 时在 `cacheDir` 生成的临时副本，见第 10 节。
 
 核心流程：
 
-1. 通过 Photo Picker 或系统分享入口获得图片 URI。
-2. 后台读取图片边界和 EXIF orientation。
+1. 通过 Photo Picker、SAF 文件选择器或系统分享 / VIEW 入口获得图片 / PDF URI。
+2. 图片走 `BitmapFactory` 读取边界和 EXIF orientation；PDF 走 `PdfRenderer` 读取页数和每页 point 尺寸。
 3. 计算页面、格子、填充方式和分辨率。
-4. 在后台线程解码图片并写入 Android 打印框架提供的输出描述符。
+4. 在后台线程解码图片（或栅格化 PDF 页）并写入 Android 打印框架提供的输出描述符。
 5. 系统打印服务负责预览、页范围、份数、色彩和实际设备输出。
 
 分栏拆印模式在进入系统打印预览前，还会使用应用内切分线预览辅助用户定位竖向切分线；该预览只加载降采样小图，不参与最终打印输出。
@@ -26,6 +27,7 @@ a4miniprint 是一个单 Activity Android 应用，用于把图片排版到 A4 �
 - 语言：Kotlin
 - UI：Android View + ViewBinding
 - 图片：`BitmapFactory`、`Bitmap`、`Canvas`、`Matrix`
+- PDF：`android.graphics.pdf.PdfRenderer`（系统 API，无新增依赖）
 - EXIF：`androidx.exifinterface`
 - 打印：`PrintManager`、`PrintDocumentAdapter`、`PdfDocument`
 - 选择器：AndroidX Activity Result API
@@ -52,6 +54,8 @@ app/src/main/
 │   │   └── PrintModels.kt
 │   ├── image/
 │   │   ├── ImageMetadataLoader.kt
+│   │   ├── PdfDocumentHandle.kt
+│   │   ├── PdfMetadataLoader.kt
 │   │   ├── PhotoDecoder.kt
 │   │   └── PreviewBitmapLoader.kt
 │   ├── layout/
@@ -93,7 +97,7 @@ app/src/main/
 
 `PrintModels.kt` 定义轻量数据模型：
 
-- `PhotoMetadata`：URI、原始尺寸和 EXIF orientation。
+- `PhotoMetadata`：URI、原始尺寸、EXIF orientation、来源类型（图片 / PDF 页）和 PDF 页索引。
 - `PhotoSlot`：照片、页面矩形、填充方式、分辨率模式和可选源图裁剪区域。
 - `PrintPage`：页面方向和一组照片槽位。
 - 枚举：顶层任务模式、布局模式、填充模式、分辨率模式。
@@ -116,12 +120,30 @@ app/src/main/
 - 修正 EXIF 方向。
 - 分栏拆印先在修正 EXIF 后的图上裁出左右栏，再进入统一渲染流程。
 - 将横版图片旋转为竖版。
+- PDF 页按来源类型分流到 `PdfRenderer`：只渲染目标栏区域到 A4 目标像素，
+  不先渲染整页再裁剪；页面空白区域先铺白。
+- PDF 的 renderer 由 `PdfDocumentHandle` 管理，一个解码器只在一次 `onWrite`
+  任务内复用，任务结束由打印适配器调用 `close()`。
 - 由打印适配器在每张图绘制后立即回收。
+
+`PdfDocumentHandle`：
+
+- 从 `content://` 或 `file://` 打开可 seek 的文件描述符并构造 `PdfRenderer`。
+- `PdfRenderer` 接管描述符，`close()` 时一并关闭；构造失败时主动关闭描述符。
+
+`PdfMetadataLoader`：
+
+- 读取 PDF 页数和每页 point 尺寸（`PdfRenderer.Page.width / height`）。
+- 直接打开失败（云盘 / pipe provider 不可 seek）时，复制到
+  `cacheDir/pdf-source-<uuid>.pdf` 后重试。
+- 返回每页一个 `PhotoMetadata`（`sourceType = PDF_PAGE`、`pdfPageIndex`）。
+- 提供 `clearCachedPdfs()`，只在选择新 PDF 或冷启动时清理临时副本。
 
 `PreviewBitmapLoader`：
 
 - 仅为分栏切分线预览加载一张小图。
-- 按 `previewMaxEdgePx` 降采样，默认最长边为 1024px。
+- 图片按 `previewMaxEdgePx` 降采样，默认最长边为 1024px。
+- PDF 打开 renderer，渲染当前预览页到最长边 1024px 的小图后关闭。
 - 修正 EXIF 方向，并在生成新 Bitmap 时回收中间对象。
 - 不参与最终打印输出，不生成文件。
 
@@ -148,6 +170,8 @@ app/src/main/
 - 预览 Bitmap 由 `MainActivity` 统一持有，主界面和分享弹窗共享同一份内存。
 - 仅分栏拆印模式加载预览；切回 4×6 模式、重新选择多图或 Activity 销毁时立即回收。
 - 加载结果带代际校验，旧的加载任务完成后不会覆盖新的选择。
+- PDF 每个源页保存独立的切分线；预览可翻页，滑杆只编辑当前页。
+- 栏数变化时所有页的切分线重置为等分。
 
 ### print
 
@@ -161,16 +185,18 @@ app/src/main/
 
 - `onLayout` 返回页数。
 - `onWrite` 根据系统请求的页范围过滤页面。
+- 每次 `onWrite` 创建独立解码器，避免上一次被取消的写入与新的写入共享
+  非线程安全的 `PdfRenderer`。
 - 在后台线程解码、绘制并写入 PDF。
-- 完成后关闭 `PdfDocument` 和后台线程池。
+- 完成后关闭 `PdfDocument`、解码器（及其 renderer）和后台线程池。
 - 输出目标是系统传入的 `ParcelFileDescriptor`。
 
 ### share
 
 `ShareIntentParser`：
 
-- 兼容 `ACTION_SEND` 和 `ACTION_SEND_MULTIPLE`。
-- 支持 `EXTRA_STREAM` 和 `ClipData`。
+- 兼容 `ACTION_SEND`、`ACTION_SEND_MULTIPLE` 和 `ACTION_VIEW`。
+- 支持 `EXTRA_STREAM`、`ClipData` 和 `intent.data`。
 - 去重 URI。
 - 过滤为本地可读的 `content` 或 `file` URI。
 - 不申请持久 URI 授权，仅使用系统当前授予的读取权限。
@@ -179,10 +205,14 @@ app/src/main/
 
 `MainActivity`：
 
-- 使用系统 Photo Picker。
+- 使用系统 Photo Picker 选择图片。
+- 使用 `OpenDocument("application/pdf")` 选择 PDF。
+- 分享 / VIEW 入口按 MIME 分流；图片和 PDF 混合或一次多个 PDF 直接提示拒绝。
 - 分享入口载入图片后直接进入主界面，不显示参数确认弹窗。
 - 维护布局、填充和分辨率选项。
 - 每次载入新图片时重置为默认 `PHOTO_4X6` 模式。
+- 载入 PDF 后进入 `COLUMN_SPLIT`，禁用 `4×6` 选项和「输出精度」，固定 300DPI。
+- PDF 预览支持「上一页 / 下一页」，切分线按源页独立保存。
 - 动态显示应用版本号。
 - 分栏拆印模式下显示切分线预览，并共享同一份降采样 Bitmap。
 - 使用单线程 executor 加载元数据。
@@ -230,7 +260,7 @@ A4 四宫格水平落位：
 ### 分辨率模式
 
 - `PRINT_300_DPI`：按目标输出尺寸采样，生成更快、体积更小。
-- `ORIGINAL`：不额外采样，适合 PDF 放大查看或二次裁切，但内存和体积更高。
+- `ORIGINAL`：不额外采样，适合保存为 PDF 后放大查看或二次裁切，但内存和体积更高。
 
 PDF 图像由 `PdfDocument` 以无损压缩方式嵌入。JPG 原文件体积是经过有损压缩后的体积，因此不能与 PDF 中的图像流体积直接类比。
 
@@ -327,6 +357,11 @@ app/build/outputs/apk/release/a4-mini-print-v<version>.apk
 - 不加入广告、账号、遥测或分析功能。
 - 应用不主动生成图片、PDF 或缓存文件。
 
+例外：PDF 来源不可 seek（部分云盘 / pipe provider）时，允许在 `cacheDir`
+生成 `pdf-source-*` 临时副本，且必须在下次选择 PDF 或冷启动时清理。
+不得在一轮 `onWrite` 结束或 Activity 销毁时删除，因为系统打印框架可能多次
+回调 `onWrite`。
+
 系统打印服务为完成任务生成的内部临时文件由系统管理，不属于应用违规落盘。
 
 ## 11. Release 签名
@@ -388,6 +423,11 @@ keytool -genkeypair -v \
 - 分栏拆印 2、3、4 栏可用，切分线可独立微调。
 - 分栏预览红线随滑杆实时移动，切回 4×6 模式后释放预览内存。
 - 分栏拆印的等比适配、拉伸填满和从左到右页面顺序可用。
+- PDF 可经应用内选择、分享面板和「用其他应用打开」进入。
+- 多页 PDF 输出页数 = 源页数 × 栏数，页序为源页 1 左→右、源页 2 左→右。
+- PDF 模式禁用 4×6 和输出精度；预览可翻页，每页切分线独立。
+- 不可 seek 的 PDF 来源走临时副本；退出 / 重进后无残留 `pdf-source-*`。
+- 加密或损坏 PDF 提示失败且不崩溃。
 - 真实打印机输出和切割位置符合预期。
 
 ## 13. 参考文档

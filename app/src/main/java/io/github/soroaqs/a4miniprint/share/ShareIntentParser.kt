@@ -5,15 +5,18 @@ import android.net.Uri
 import androidx.core.content.IntentCompat
 
 /**
- * 兼容系统分享面板可能传入的多种图片 URI 形式。
+ * 兼容系统分享面板可能传入的多种 URI 形式。
+ *
+ * SEND / SEND_MULTIPLE 对应分享面板；VIEW 对应「用其他应用打开」。
  */
 class ShareIntentParser {
 
     fun parse(intent: Intent): List<Uri> {
-        // 只把系统分享动作当作图片入口；普通启动、深链或异常 Intent
-        // 即使携带 URI，也不应误触发分享确认弹窗。
+        // 只把系统分享 / 打开动作当作输入入口；普通启动、深链或异常 Intent
+        // 即使携带 URI，也不应误触发载入。
         if (intent.action != Intent.ACTION_SEND &&
-            intent.action != Intent.ACTION_SEND_MULTIPLE
+            intent.action != Intent.ACTION_SEND_MULTIPLE &&
+            intent.action != Intent.ACTION_VIEW
         ) {
             return emptyList()
         }

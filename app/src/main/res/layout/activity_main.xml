@@ -33,6 +33,13 @@
             android:layout_marginTop="20dp"
             android:text="@string/select_photos" />
 
+        <Button
+            android:id="@+id/select_pdf_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/select_pdf" />
+
         <TextView
             android:id="@+id/selected_count_text"
             android:layout_width="wrap_content"
@@ -207,6 +214,47 @@
                 android:layout_marginTop="4dp"
                 android:background="#F3F4F6" />
 
+            <LinearLayout
+                android:id="@+id/split_page_nav"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <Button
+                    android:id="@+id/split_prev_page_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/pdf_page_previous" />
+
+                <TextView
+                    android:id="@+id/split_page_indicator_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:textColor="#374151"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/split_next_page_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/pdf_page_next" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/split_pdf_note_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/split_preview_pdf_note"
+                android:textColor="#6B7280"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/split_line_1_label"
                 android:layout_width="wrap_content"
@@ -282,34 +330,41 @@
             </RadioGroup>
         </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/resolution_mode"
-            android:textColor="#374151"
-            android:textSize="14sp" />
-
-        <RadioGroup
-            android:id="@+id/resolution_mode_group"
+        <LinearLayout
+            android:id="@+id/resolution_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
             android:orientation="vertical">
 
-            <RadioButton
-                android:id="@+id/resolution_print_radio"
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="@string/resolution_print" />
+                android:layout_marginTop="16dp"
+                android:text="@string/resolution_mode"
+                android:textColor="#374151"
+                android:textSize="14sp" />
 
-            <RadioButton
-                android:id="@+id/resolution_original_radio"
+            <RadioGroup
+                android:id="@+id/resolution_mode_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/resolution_original" />
-        </RadioGroup>
+                android:layout_marginTop="4dp"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/resolution_print_radio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="@string/resolution_print" />
+
+                <RadioButton
+                    android:id="@+id/resolution_original_radio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/resolution_original" />
+            </RadioGroup>
+        </LinearLayout>
 
         <Button
             android:id="@+id/print_button"

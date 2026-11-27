@@ -39,7 +39,6 @@ class PhotoPrintDocumentAdapter(
     private val pages: List<PrintPage>
 ) : PrintDocumentAdapter() {
 
-    private val photoDecoder = PhotoDecoder(context.contentResolver, config)
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeFuture: FutureTask<*>? = null
     private var writeExecutor: ExecutorService? = null
@@ -97,6 +96,9 @@ class PhotoPrintDocumentAdapter(
         }
 
         val task = FutureTask<Any?> {
+            // 每次写入使用独立解码器：上一次写入被取消时，两者不会共享
+            // 非线程安全的 PdfRenderer。
+            val photoDecoder = PhotoDecoder(context.contentResolver, config)
             val document = PdfDocument()
 
             try {
@@ -115,7 +117,7 @@ class PhotoPrintDocumentAdapter(
                     ).create()
 
                     val pdfPage = document.startPage(pageInfo)
-                    renderPage(pdfPage.canvas, page)
+                    renderPage(pdfPage.canvas, page, photoDecoder)
                     document.finishPage(pdfPage)
                 }
 
@@ -136,6 +138,7 @@ class PhotoPrintDocumentAdapter(
                 }
             } finally {
                 document.close()
+                photoDecoder.close()
                 executor.shutdownNow()
             }
 
@@ -179,7 +182,11 @@ class PhotoPrintDocumentAdapter(
         }
     }
 
-    private fun renderPage(canvas: Canvas, page: PrintPage) {
+    private fun renderPage(
+        canvas: Canvas,
+        page: PrintPage,
+        photoDecoder: PhotoDecoder
+    ) {
         canvas.drawColor(Color.WHITE)
 
         val paint = Paint().apply {
